@@ -1,0 +1,18 @@
+[package]
+name = "github-action-nix-proxy"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.104"
+bytes = "1.12.1"
+http = "1.5.0"
+hyper = { version = "1.12.0", features = ["full", "server"] }
+hyper-rustls = { version = "0.27.10", features = ["http1"] }
+hyper-util = { version = "0.1.21", features = ["client", "client-legacy", "full", "http1"] }
+thiserror = "2.0.21"
+tokio = { version = "1.53.3", features = ["full"] }
+tokio-rustls = { version = "0.26.6", features = ["aws_lc_rs"] }
+
+tracing = { version = "0.1", features = ["log", "max_level_debug"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
