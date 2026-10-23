@@ -1,0 +1,7 @@
+[advisories]
+unmaintained = "all"
+unsound = "all"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

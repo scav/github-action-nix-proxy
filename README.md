@@ -28,3 +28,7 @@ The proxy is configured using evironment variables.
 
 In `./.cargo/config.toml` a minimum publish age is added.
 This will be stabilized in a later version of Rust.
+
+To check for security issues and other problems with the dependency graph run
+- `cargo audit`
+- `cargo deny check` (licenses not currently handled properly)

@@ -105,6 +105,7 @@
             packages = [
               pkgs.bacon
               pkgs.cargo-audit
+              pkgs.cargo-deny
               pkgs.cargo-nextest
               pkgs.pkg-config
               bi
