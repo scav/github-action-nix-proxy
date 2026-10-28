@@ -23,6 +23,7 @@ pub async fn send(
     req: Request<Incoming>,
 ) -> Result<Response<Incoming>, ProxyError> {
     let req = send_inner::<Incoming>(&cache_url, req)?;
+
     debug!("Created request {:?}", &req);
 
     client
@@ -72,8 +73,8 @@ mod test {
     use crate::forward_proxy::send_inner;
     use http::Request;
 
-    #[tokio::test]
-    async fn test_send_inner() {
+    #[test]
+    fn test_send_inner() {
         let cache_url = "https://example.org";
         let req = Request::builder()
             .method("GET")
