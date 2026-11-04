@@ -1,13 +1,26 @@
 use anyhow::{Context, Result};
 use std::env;
+use std::fmt;
 use std::str::FromStr;
 use std::sync::Arc;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Config {
     pub port: u16,
     pub cache_url: Arc<str>,
     pub token: Arc<str>,
+}
+
+impl fmt::Display for Config {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "port: {}, cache_url: {}, token: {}",
+            self.port,
+            self.cache_url,
+            !self.token.is_empty()
+        )
+    }
 }
 
 impl Config {

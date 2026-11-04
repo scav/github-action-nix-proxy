@@ -31,7 +31,7 @@ async fn main() -> Result<()> {
     );
 
     let config = config::Config::new()?;
-    info!("Forward proxy running with {:?}", &config);
+    info!("Forward proxy running with {}", &config);
 
     serve(config).await
 }
