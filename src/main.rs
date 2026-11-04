@@ -1,5 +1,6 @@
 #![warn(clippy::pedantic)]
 use std::net::SocketAddr;
+use std::time::Duration;
 
 use anyhow::{Context, Result};
 use hyper::body::Incoming;
@@ -7,9 +8,10 @@ use hyper_util::client::legacy::Client;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use tokio::net::TcpListener;
 use tokio_rustls::rustls;
-use tracing::{debug, error, info, warn};
 
 use hyper::{server::conn::http1, service::service_fn};
+use tokio_util::task::TaskTracker;
+use tracing::{error, info, warn};
 
 use crate::config::Config;
 
@@ -20,35 +22,28 @@ mod forward_proxy;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
-    // Set crypto provider globally at startup
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .init();
+
     let _ = rustls::crypto::CryptoProvider::install_default(
         rustls::crypto::aws_lc_rs::default_provider(),
     );
 
     let config = config::Config::new()?;
-    debug!("Foward proxy running with {:?}", &config);
+    info!("Forward proxy running with {:?}", &config);
 
-    serve(&config).await
+    serve(config).await
 }
 
-async fn shutdown_signal() {
-    tokio::signal::ctrl_c()
-        .await
-        .expect("failed to install CTRL+C signal handler");
-}
-
-async fn serve(config: &Config) -> Result<(), anyhow::Error> {
-    let addr = SocketAddr::from(([0, 0, 0, 0], config.port)); // to support OCI we cant bind to 127
+async fn serve(config: Config) -> Result<(), anyhow::Error> {
+    let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
     let listener = TcpListener::bind(addr)
         .await
         .context(format!("Unable to start proxy when binding to {addr}"))?;
-    let graceful = hyper_util::server::graceful::GracefulShutdown::new();
-    let mut signal = std::pin::pin!(shutdown_signal());
-
     info!("Forward proxy bound to {}", addr);
 
-    let exec = TokioExecutor::new();
+    let tracker = TaskTracker::new();
 
     let https_connector = hyper_rustls::HttpsConnectorBuilder::new()
         .with_native_roots()?
@@ -56,37 +51,58 @@ async fn serve(config: &Config) -> Result<(), anyhow::Error> {
         .enable_http1()
         .build();
 
+    let exec = TokioExecutor::new();
     let client: Client<_, Incoming> =
         hyper_util::client::legacy::Builder::new(exec.clone()).build(https_connector);
 
+    let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
+
     loop {
         tokio::select! {
-            Ok((stream, _)) = listener.accept() => {
+            _ = sigterm.recv() => {
+                info!("SIGTERM received. Stopping new connections");
+                break;
+            }
+            _ = tokio::signal::ctrl_c() => {
+                info!("Ctrl+C received. Stopping new connections");
+                break;
+            }
+
+            res = listener.accept() => {
+                let (stream, _) = match res {
+                    Ok(conn) => conn,
+                    Err(err) => {
+                        error!("Accept failed: {err}");
+                        continue;
+                    }
+                };
+
                 let io = TokioIo::new(stream);
-                let client = client.clone();
-                let cache_url = config.cache_url.clone();
-                tokio::task::spawn(async move {
+                let (client, config) = (client.clone(), config.clone());
+
+                tracker.spawn(async move {
                     if let Err(err) = http1::Builder::new()
-                        .serve_connection(io, service_fn(move |req| send(client.clone(),cache_url.clone(), req)))
+                        .serve_connection(io, service_fn(move |req| send(config.clone(), client.clone(), req)))
                         .await
                     {
-                        error!("Error serving connection: {}", err);
+                        warn!("Connection closed: {err}");
                     }
                 });
-            },
-
-            () = &mut signal => {
-                drop(listener);
-                break;
             }
         }
     }
+
+    drop(listener);
+
+    tracker.close();
+    let connections = tracker.len();
+
     tokio::select! {
-        () = graceful.shutdown() => {
-            info!("Shutdown complete");
-        },
-        () = tokio::time::sleep(std::time::Duration::from_secs(30)) => {
-            warn!("Shutdown failed");
+        () = tracker.wait() => {
+            info!("Connections drained ({connections})");
+        }
+        () = tokio::time::sleep(Duration::from_secs(5)) => {
+            warn!("Connection drain timeout. Forcing exit of {connections} connections");
         }
     }
 

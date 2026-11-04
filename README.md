@@ -8,22 +8,30 @@ It acts as a substituter for any service running on the host.
 Nix does not reliably support setting query parameters to all requests and does not
 necessarily read environment variables at all.
 
-Append a query parameter to all requests `x-use-new-ingress=1` to make
-sure we hit the new ingress. This ingress supports mapping `Authorization: Basic token`
-to `Authorization Bearer` and validate the incoming token from a GitHub Action.
+This proxy attaches `Authorization: Bearer $token` to the request. It also respects all
+query parameters and paths added by nix.
 
 ## How
 Set the substituters = ["http://127.0.0.1:8300"] and it will behave just like a binary cache.
 
 ## Running
-The proxy is configured using evironment variables.
+The proxy is configured using environment variables.
 
 - `NIXFWD_PORT` sets the proxy port
 - `NIXFWD_TARGET` sets the proxy target (e.g. S3 bucket)
 
+In a GitHub Action this can run as a background service after nix has been
+installed in the runner:
+```yaml
+  - name: Run nix-proxy
+    id: nix-proxy
+    run: |
+      nix run
+    background: true
+```
 
 ## Development
-- `direnv` allow to initialise the development environemtn
+- `direnv` allow to initialise the development environment
 - `bacon` to run the code, check `bacon.toml` for commands
 
 In `./.cargo/config.toml` a minimum publish age is added.

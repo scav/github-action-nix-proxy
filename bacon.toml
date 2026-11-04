@@ -21,12 +21,12 @@ command = [
 ]
 need_stdout = true
 analyzer = "nextest"
+env.RUST_LOG="debug"
 
 [jobs.run]
 command = [
     "cargo", "run",
 ]
-env.RUST_LOG="debug"
 watch = ["src"]
 need_stdout = true
 allow_warnings = true

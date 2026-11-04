@@ -13,6 +13,7 @@ hyper-util = { version = "0.1.21", features = ["client", "client-legacy", "full"
 thiserror = "2.0.21"
 tokio = { version = "1.53.3", features = ["full"] }
 tokio-rustls = { version = "0.26.6", features = ["aws_lc_rs"] }
+tokio-util = { version = "0.7.20", features = ["rt"] }
 
 tracing = { version = "0.1", features = ["log", "max_level_debug"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

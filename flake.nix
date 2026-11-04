@@ -48,9 +48,6 @@
 
                 doCheck = true;
                 strip = true;
-
-                # preBuild = ''
-                # '';
               };
         in
         {
@@ -89,9 +86,9 @@
           ];
 
           bi = pkgs.writeShellScriptBin "bi" ''
-            echo "🔨 building image..."
+            echo "Building image..."
             nix build .#packages.${arch}-linux.docker
-            echo "🐳 loading image..."
+            echo "Loading image..."
             docker load < result
           '';
         in
@@ -99,8 +96,6 @@
           default = pkgs.mkShell {
             buildInputs = [
               toolchain
-            ];
-            nativeBuildInputs = [
             ];
             packages = [
               pkgs.bacon
@@ -111,6 +106,7 @@
               bi
             ];
             NIXFWD_URL = "https://example.org";
+            NIXFWD_TOKEN = "asdf";
           };
         }
       );
