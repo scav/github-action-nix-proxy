@@ -58,24 +58,22 @@ fn send_inner<B>(
         })?;
     }
 
-    req.headers_mut().extend([
-        (
-            hyper::header::HOST,
-            hyper::header::HeaderValue::from_str(host).map_err(|e| ProxyError::HeaderError {
-                message: format!("Error in HOST header: {}", e),
-            })?,
-        ),
-        (
-            hyper::header::FORWARDED,
-            hyper::header::HeaderValue::from_static("by=github-actions-nix-proxy;for=nix"),
-        ),
-        (
-            hyper::header::AUTHORIZATION,
-            hyper::header::HeaderValue::from_str(token).map_err(|e| ProxyError::HeaderError {
-                message: format!("Error in AUTHORIZATION header: {}", e),
-            })?,
-        ),
-    ]);
+    req.headers_mut().insert(
+        hyper::header::HOST,
+        hyper::header::HeaderValue::from_str(host).map_err(|e| ProxyError::HeaderError {
+            message: format!("Error in HOST header: {}", e),
+        })?,
+    );
+    req.headers_mut().insert(
+        hyper::header::FORWARDED,
+        hyper::header::HeaderValue::from_static("by=github-actions-nix-proxy;for=nix"),
+    );
+    req.headers_mut().insert(
+        hyper::header::AUTHORIZATION,
+        hyper::header::HeaderValue::from_str(token).map_err(|e| ProxyError::HeaderError {
+            message: format!("Error in AUTHORIZATION header: {}", e),
+        })?,
+    );
 
     Ok(req)
 }
