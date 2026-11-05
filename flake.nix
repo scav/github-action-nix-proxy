@@ -105,11 +105,12 @@
               pkgs.pkg-config
               bi
             ];
+
             NIXFWD_URL = "https://example.org";
-            NIXFWD_TOKEN = "asdf";
+            NIXFWD_HOST = "example.org";
+            NIXFWD_AUTHORIZATION_TOKEN = "na";
           };
         }
       );
-
     };
 }

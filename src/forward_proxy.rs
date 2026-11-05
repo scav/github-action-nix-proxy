@@ -26,7 +26,7 @@ pub async fn send(
     client: HttpClient,
     req: Request<Incoming>,
 ) -> Result<Response<Incoming>, ProxyError> {
-    let req = send_inner::<Incoming>(&config.cache_url, &config.token, req)?;
+    let req = send_inner::<Incoming>(&config.cache_url, &config.auth_token, &config.host, req)?;
 
     debug!("Request {:?}", &req);
 
@@ -38,6 +38,7 @@ pub async fn send(
 fn send_inner<B>(
     cache_url: &str,
     token: &str,
+    host: &str,
     mut req: Request<B>,
 ) -> Result<Request<B>, ProxyError> {
     let url = req.uri_mut();
@@ -60,9 +61,9 @@ fn send_inner<B>(
     req.headers_mut().extend([
         (
             hyper::header::HOST,
-            hyper::header::HeaderValue::from_static(
-                "ip-nix-cache-test.s3.eu-north-1.amazonaws.com",
-            ),
+            hyper::header::HeaderValue::from_str(host).map_err(|e| ProxyError::HeaderError {
+                message: format!("Error in HOST header: {}", e),
+            })?,
         ),
         (
             hyper::header::FORWARDED,
@@ -71,7 +72,7 @@ fn send_inner<B>(
         (
             hyper::header::AUTHORIZATION,
             hyper::header::HeaderValue::from_str(token).map_err(|e| ProxyError::HeaderError {
-                message: e.to_string(),
+                message: format!("Error in AUTHORIZATION header: {}", e),
             })?,
         ),
     ]);
@@ -81,13 +82,21 @@ fn send_inner<B>(
 
 #[cfg(test)]
 mod test {
+    use std::sync::Arc;
+
+    use crate::config::Config;
     use crate::forward_proxy::send_inner;
     use http::Request;
 
     #[test]
     fn test_send_inner() {
-        let cache_url = "https://example.org";
-        let token = "na";
+        let cache_url = Arc::from("https://example.org");
+        let port = 8300;
+        let auth_token = String::from("na");
+        let host = Arc::from("example.org");
+
+        let config = Config::with_token("Bearer", port, cache_url, host, auth_token)
+            .expect("config should be created");
 
         {
             let req = Request::builder()
@@ -95,7 +104,8 @@ mod test {
                 .uri("http://127.0.0.1:8300?abc=123&123=abc")
                 .body(())
                 .unwrap();
-            let modified_request = send_inner::<()>(cache_url, token, req);
+            let modified_request =
+                send_inner::<()>(&config.cache_url, &config.auth_token, &config.host, req);
             assert!(
                 modified_request
                     .is_ok_and(|req| { req.uri().eq("https://example.org/?abc=123&123=abc") })
@@ -107,7 +117,8 @@ mod test {
                 .uri("http://127.0.0.1:8300/foo/bar?abc=123&123=abc")
                 .body(())
                 .unwrap();
-            let modified_request = send_inner::<()>(cache_url, token, req);
+            let modified_request =
+                send_inner::<()>(&config.cache_url, &config.auth_token, &config.host, req);
             assert!(
                 modified_request.is_ok_and(|req| {
                     req.uri().eq("https://example.org/foo/bar?abc=123&123=abc")
@@ -120,7 +131,8 @@ mod test {
                 .uri("http://127.0.0.1:8300")
                 .body(())
                 .unwrap();
-            let modified_request = send_inner::<()>(cache_url, token, req);
+            let modified_request =
+                send_inner::<()>(&config.cache_url, &config.auth_token, &config.host, req);
             assert!(modified_request.is_ok_and(|req| { req.uri().eq("https://example.org") }));
         }
     }

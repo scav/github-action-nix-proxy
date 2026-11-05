@@ -18,7 +18,10 @@ Set the substituters = ["http://127.0.0.1:8300"] and it will behave just like a 
 The proxy is configured using environment variables.
 
 - `NIXFWD_PORT` sets the proxy port
-- `NIXFWD_TARGET` sets the proxy target (e.g. S3 bucket)
+- `NIXFWD_URL` sets the proxy target
+- `NIXFWD_HOST` sets the HOST Header
+- `NIXFWD_AUTHORIZATION_TOKEN` sets the AUTHORIZATION token (defaults to Bearer)
+- `NIXFWD_AUTHORIZATION_TOKEN_NAME` sets the AUTHORIZATION token (defaults to Bearer)
 
 In a GitHub Action this can run as a background service after nix has been
 installed in the runner:
